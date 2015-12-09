@@ -74,8 +74,10 @@ Java_com_projecttango_experiments_nativeplanefitting_JNIInterface_freeGLContent(
 
 JNIEXPORT void JNICALL
 Java_com_projecttango_experiments_nativeplanefitting_JNIInterface_onTouchEvent(
-    JNIEnv* /*env*/, jobject /*obj*/, jfloat x, jfloat y) {
-  app.OnTouchEvent(x, y);
+    JNIEnv* env, jobject /*obj*/, jfloat x, jfloat y, jstring jfilename) {
+  const char* filename = env->GetStringUTFChars(jfilename , NULL);
+  app.OnTouchEvent(x, y, std::string(filename));
+  env->ReleaseStringUTFChars(jfilename, filename);
 }
 
 #ifdef __cplusplus

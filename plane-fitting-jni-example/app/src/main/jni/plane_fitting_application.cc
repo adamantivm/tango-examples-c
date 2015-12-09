@@ -43,10 +43,28 @@ void OnXYZijAvailableRouter(void* context, const TangoXYZij* xyz_ij) {
   app->OnXYZijAvailable(xyz_ij);
 }
 
+void OnFrameAvailableRouter(void* context, TangoCameraId camera_id, const TangoImageBuffer *buffer) {
+  PlaneFittingApplication* app = static_cast<PlaneFittingApplication*>(context);
+  app->OnFrameAvailable(buffer);
+}
+
 }  // end namespace
 
 void PlaneFittingApplication::OnXYZijAvailable(const TangoXYZij* xyz_ij) {
   point_cloud_->UpdateVertices(xyz_ij);
+}
+
+void PlaneFittingApplication::OnFrameAvailable(const TangoImageBuffer *buffer) {
+  if (buffer->format == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP) {
+      int data_size = buffer->width * buffer->height * 1.5;
+      if (current_image.data == nullptr) {
+          current_image.data = (uint8_t *)malloc(data_size);
+      }
+      current_image.width = buffer->width;
+      current_image.height = buffer->height;
+      current_image.timestamp = buffer->timestamp;
+      memcpy(current_image.data, buffer->data, data_size);
+  }
 }
 
 PlaneFittingApplication::PlaneFittingApplication()
@@ -55,7 +73,9 @@ PlaneFittingApplication::PlaneFittingApplication()
       opengl_world_T_start_service_(
           tango_gl::conversions::opengl_world_T_tango_world()),
       color_camera_T_opengl_camera_(
-          tango_gl::conversions::color_camera_T_opengl_camera()) {}
+          tango_gl::conversions::color_camera_T_opengl_camera()) {
+    current_image.data = nullptr;
+}
 
 PlaneFittingApplication::~PlaneFittingApplication() {
   TangoConfig_free(tango_config_);
@@ -121,6 +141,9 @@ int PlaneFittingApplication::TangoSetupAndConnect() {
     LOGE("Failed to connected to depth callback.");
     return ret;
   }
+
+  // Register for RGB image frames
+  ret = TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, this, OnFrameAvailableRouter);
 
   // Here, we will connect to the TangoService and set up to run. Note that
   // we are passing in a pointer to ourselves as the context which will be
@@ -328,7 +351,7 @@ void PlaneFittingApplication::FreeGLContent() {
 }
 
 // We assume the Java layer ensures this function is called on the GL thread.
-void PlaneFittingApplication::OnTouchEvent(float x, float y) {
+void PlaneFittingApplication::OnTouchEvent(float x, float y, std::string basedir) {
   // Get the current point cloud data and transform.  This assumes the data has
   // been recently updated on the render thread and does not attempt to update
   // again here.
@@ -352,6 +375,7 @@ void PlaneFittingApplication::OnTouchEvent(float x, float y) {
   }
   glm::vec2 uv(x / screen_width_, y / screen_height_);
 
+
   glm::dvec3 double_depth_position;
   glm::dvec4 double_depth_plane_equation;
   if (TangoSupport_fitPlaneModelNearClick(
@@ -362,7 +386,45 @@ void PlaneFittingApplication::OnTouchEvent(float x, float y) {
     return;  // Assume error has already been reported.
   }
 
-  const glm::vec3 depth_position =
+  // Dump data to disk
+        std::ofstream cloudfile;
+        cloudfile.open(basedir + "/cloud.csv");
+        for (int i=0; i < current_cloud->xyz_count; i++) {
+            cloudfile << current_cloud->xyz[i*3][0] << ","
+            << current_cloud->xyz[i*3][1] << ","
+            << current_cloud->xyz[i*3][2] << "\n";
+        }
+        cloudfile.close();
+
+        std::ofstream metafile;
+        metafile.open(basedir + "/metadata.txt");
+        metafile << "cloud ts: " << current_cloud->timestamp << "\n";
+        metafile << "cloud points: " << current_cloud->xyz_count << "\n";
+        metafile << "image width: " << current_image.width << "\n";
+        metafile << "image height: " << current_image.height << "\n";
+        metafile << "image timestamp: " << current_image.timestamp << "\n";
+        metafile << "plane model: " << double_depth_plane_equation[0] << ","
+                                    << double_depth_plane_equation[1] << ","
+                                    << double_depth_plane_equation[2] << ","
+                                    << double_depth_plane_equation[3] << "\n";
+        metafile << "intersection point: " << double_depth_position[0] << ","
+                                           << double_depth_position[1] << ","
+                                           << double_depth_position[2] << "\n";
+        metafile.close();
+
+        std::ofstream imgfile;
+        imgfile.open(basedir + "/image.bin", std::ios::out | std::ios::binary);
+        int buffer_size = current_image.width * current_image.height * 1.5;
+        imgfile.write((const char *) current_image.data, buffer_size);
+
+        if (imgfile.fail()) {
+            LOGE("error writing image file: %s", strerror(errno));
+        }
+        imgfile.close();
+
+        LOGI("dataset saved on: %s. Buffer size: %d", basedir.c_str(), buffer_size);
+
+        const glm::vec3 depth_position =
       static_cast<glm::vec3>(double_depth_position);
   const glm::vec4 depth_plane_equation =
       static_cast<glm::vec4>(double_depth_plane_equation);

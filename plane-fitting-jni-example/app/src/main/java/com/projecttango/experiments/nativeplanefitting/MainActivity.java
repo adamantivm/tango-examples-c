@@ -127,10 +127,13 @@ public class MainActivity extends Activity {
             // rather than Android UI thread. This ensures we can modify
             // rendering state without locking.  This event triggers a plane
             // fit.
+
+            final String filesPath = getFilesDir().getAbsolutePath();
+
             mGLView.queueEvent(new Runnable() {
                     @Override
                     public void run() {
-                        JNIInterface.onTouchEvent(event.getX(), event.getY());
+                        JNIInterface.onTouchEvent(event.getX(), event.getY(), filesPath);
                     }
                 });
         }

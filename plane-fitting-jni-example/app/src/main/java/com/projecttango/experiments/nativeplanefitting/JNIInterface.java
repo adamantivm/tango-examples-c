@@ -55,5 +55,5 @@ public class JNIInterface {
     public static native void render();
 
     // Respond to a touch event.
-    public static native void onTouchEvent(float x, float y);
+    public static native void onTouchEvent(float x, float y, String filename);
 }

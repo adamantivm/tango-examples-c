@@ -19,6 +19,8 @@
 
 #include <jni.h>
 
+#include <fstream>
+
 #include <tango_client_api.h>
 #include <tango-gl/cube.h>
 #include <tango-gl/util.h>
@@ -71,13 +73,15 @@ class PlaneFittingApplication {
   //
   void OnXYZijAvailable(const TangoXYZij* xyz_ij);
 
+  void OnFrameAvailable(const TangoImageBuffer *buffer);
+
   //
   // Callback for touch events to fit a plane and place an object.  The Java
   // layer should ensure this is only called from the GL thread.
   //
   // @param x The requested x coordinate in screen space of the window.
   // @param y The requested y coordinate in screen space of the window.
-  void OnTouchEvent(float x, float y);
+  void OnTouchEvent(float x, float y, std::string filename);
 
  private:
   // Details of rendering to OpenGL after determining transforms.
@@ -90,6 +94,8 @@ class PlaneFittingApplication {
   tango_gl::VideoOverlay* video_overlay_;
   PointCloud* point_cloud_;
   tango_gl::Cube* cube_;
+
+  TangoImageBuffer current_image;
 
   // The dimensions of the render window.
   float screen_width_;
