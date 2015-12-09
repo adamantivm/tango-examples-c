@@ -398,11 +398,13 @@ void PlaneFittingApplication::OnTouchEvent(float x, float y, std::string basedir
 
         std::ofstream metafile;
         metafile.open(basedir + "/metadata.txt");
-        metafile << "cloud ts: " << current_cloud->timestamp << "\n";
+        metafile << "cloud timestamp: " << current_cloud->timestamp << "\n";
         metafile << "cloud points: " << current_cloud->xyz_count << "\n";
         metafile << "image width: " << current_image.width << "\n";
         metafile << "image height: " << current_image.height << "\n";
         metafile << "image timestamp: " << current_image.timestamp << "\n";
+        metafile << "clicked u,v: " << x << "/" << screen_width_ << ","
+                                    << y << "/" << screen_height_ << "\n";
         metafile << "plane model: " << double_depth_plane_equation[0] << ","
                                     << double_depth_plane_equation[1] << ","
                                     << double_depth_plane_equation[2] << ","
