@@ -17,11 +17,19 @@ PROJECT_ROOT_FROM_JNI := ../../../../..
 PROJECT_ROOT := $(LOCAL_PATH)/$(PROJECT_ROOT_FROM_JNI)
 
 include $(CLEAR_VARS)
+
+OPENCVROOT:= /home/pablorm/OpenCV-android-sdk
+OPENCV_CAMERA_MODULES:=on
+OPENCV_INSTALL_MODULES:=on
+OPENCV_LIB_TYPE:=SHARED
+include ${OPENCVROOT}/sdk/native/jni/OpenCV.mk
+
 LOCAL_MODULE := plane_fitting_jni_example
-LOCAL_SHARED_LIBRARIES := tango_client_api tango_support_api
+LOCAL_SHARED_LIBRARIES += tango_client_api tango_support_api
 LOCAL_CFLAGS := -std=c++11
 LOCAL_C_INCLUDES := $(PROJECT_ROOT)/tango-gl/include \
-                    $(PROJECT_ROOT)/third-party/glm
+                    $(PROJECT_ROOT)/third-party/glm \
+                    $(OPENCVROOT)/sdk/native/jni/include
 LOCAL_SRC_FILES := jni_interface.cc \
                    plane_fitting.cc \
                    plane_fitting_application.cc \

@@ -18,6 +18,7 @@
 
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include "opencv2/opencv.hpp"
 #include <tango-gl/camera.h>
 #include <tango-gl/conversions.h>
 #include <tango-gl/util.h>
@@ -387,46 +388,55 @@ void PlaneFittingApplication::OnTouchEvent(float x, float y, std::string basedir
   }
 
   // Dump data to disk
-        std::ofstream cloudfile;
-        cloudfile.open(basedir + "/cloud.csv");
-        for (int i=0; i < current_cloud->xyz_count; i++) {
-            cloudfile << current_cloud->xyz[i*3][0] << ","
-            << current_cloud->xyz[i*3][1] << ","
-            << current_cloud->xyz[i*3][2] << "\n";
-        }
-        cloudfile.close();
 
-        std::ofstream metafile;
-        metafile.open(basedir + "/metadata.txt");
-        metafile << "cloud timestamp: " << current_cloud->timestamp << "\n";
-        metafile << "cloud points: " << current_cloud->xyz_count << "\n";
-        metafile << "image width: " << current_image.width << "\n";
-        metafile << "image height: " << current_image.height << "\n";
-        metafile << "image timestamp: " << current_image.timestamp << "\n";
-        metafile << "clicked u,v: " << x << "/" << screen_width_ << ","
-                                    << y << "/" << screen_height_ << "\n";
-        metafile << "plane model: " << double_depth_plane_equation[0] << ","
-                                    << double_depth_plane_equation[1] << ","
-                                    << double_depth_plane_equation[2] << ","
-                                    << double_depth_plane_equation[3] << "\n";
-        metafile << "intersection point: " << double_depth_position[0] << ","
-                                           << double_depth_position[1] << ","
-                                           << double_depth_position[2] << "\n";
-        metafile.close();
+  // Save image.
+  // Convert to BGR format using OpenCV.
+  cv::Mat _yuv(current_image.height + current_image.height/2, current_image.width, CV_8UC1,
+                (uchar*)current_image.data);
+  cv::Mat output;
+  cv::cvtColor(_yuv, output, CV_YUV2BGR_NV21);
 
-        std::ofstream imgfile;
-        imgfile.open(basedir + "/image.bin", std::ios::out | std::ios::binary);
-        int buffer_size = current_image.width * current_image.height * 1.5;
-        imgfile.write((const char *) current_image.data, buffer_size);
+  // Save it as a png file.
+  std::vector<int> compression_params;
+  compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
+  compression_params.push_back(9);
+  cv::imwrite(basedir + "/image.png", output, compression_params);
 
-        if (imgfile.fail()) {
-            LOGE("error writing image file: %s", strerror(errno));
-        }
-        imgfile.close();
 
-        LOGI("dataset saved on: %s. Buffer size: %d", basedir.c_str(), buffer_size);
+  // Save point cloud.
+  std::ofstream cloudfile;
+  cloudfile.open(basedir + "/cloud.csv");
+  for (int i=0; i < current_cloud->xyz_count; i++) {
+          cloudfile << current_cloud->xyz[i*3][0] << ","
+          << current_cloud->xyz[i*3][1] << ","
+          << current_cloud->xyz[i*3][2] << "\n";
+  }
+  cloudfile.close();
 
-        const glm::vec3 depth_position =
+  // Save metadata.
+  std::ofstream metafile;
+  metafile.open(basedir + "/metadata.txt");
+  metafile << "cloud timestamp: " << current_cloud->timestamp << "\n";
+  metafile << "cloud points: " << current_cloud->xyz_count << "\n";
+  metafile << "image width: " << current_image.width << "\n";
+  metafile << "image height: " << current_image.height << "\n";
+  metafile << "image timestamp: " << current_image.timestamp << "\n";
+  metafile << "clicked u,v: " << x << "/" << screen_width_ << ","
+                             << y << "/" << screen_height_ << "\n";
+  metafile << "plane model: " << double_depth_plane_equation[0] << ","
+                              << double_depth_plane_equation[1] << ","
+                              << double_depth_plane_equation[2] << ","
+                              << double_depth_plane_equation[3] << "\n";
+  metafile << "intersection point: " << double_depth_position[0] << ","
+                                     << double_depth_position[1] << ","
+                                     << double_depth_position[2] << "\n";
+  metafile.close();
+
+
+
+  LOGI("dataset saved on: %s. ", basedir.c_str());
+
+  const glm::vec3 depth_position =
       static_cast<glm::vec3>(double_depth_position);
   const glm::vec4 depth_plane_equation =
       static_cast<glm::vec4>(double_depth_plane_equation);
