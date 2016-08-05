@@ -20,13 +20,11 @@ PROJECT_ROOT:= $(call my-dir)/../../../../..
 include $(CLEAR_VARS)
 LOCAL_MODULE    := libcpp_motion_tracking_example
 LOCAL_SHARED_LIBRARIES := tango_client_api tango_support_api
-LOCAL_STATIC_LIBRARIES := png
 LOCAL_CFLAGS    := -std=c++11
 
 LOCAL_C_INCLUDES := $(PROJECT_ROOT)/tango-service-sdk/include/ \
                     $(PROJECT_ROOT)/tango_gl/include \
-                    $(PROJECT_ROOT)/third_party/glm/ \
-                    $(PROJECT_ROOT)/third_party/libpng/include/
+                    $(PROJECT_ROOT)/third_party/glm/
 
 LOCAL_SRC_FILES := jni_interface.cc \
                    motion_tracking_app.cc \
@@ -43,12 +41,10 @@ LOCAL_SRC_FILES := jni_interface.cc \
                    $(PROJECT_ROOT_FROM_JNI)/tango_gl/meshes.cc \
                    $(PROJECT_ROOT_FROM_JNI)/tango_gl/tango_gl.cc
 
-LOCAL_LDLIBS    := -llog -lGLESv2 -L$(SYSROOT)/usr/lib -lz -landroid
+LOCAL_LDLIBS    := -llog -lGLESv2 -L$(SYSROOT)/usr/lib -lpng -lz -landroid
 include $(BUILD_SHARED_LIBRARY)
 
 $(call import-add-path, $(PROJECT_ROOT))
-$(call import-add-path, $(PROJECT_ROOT)/third_party)
-$(call import-module,libpng)
 $(call import-module,tango_client_api)
 $(call import-module,tango_support_api)
 
